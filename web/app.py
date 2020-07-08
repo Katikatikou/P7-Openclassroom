@@ -16,11 +16,20 @@ print('Backend is ready dude!')
 
 @app.route('/get_all_clients', methods=['GET'])
 def get_all_clients():
+    """
+
+    :return: all clients ids in the sample
+    """
     return jsonify(list(data['SK_ID_CURR']))
 
 
 @app.route('/get_client_prediction/<id>', methods=['GET'])
 def get_client_prediction(id):
+    """
+
+    :param id: the client id
+    :return: a dict with the client prediction, and the proba to be at the default
+    """
     X = data[data['SK_ID_CURR'] == int(id)]
     result = {}
     if X.shape[0] == 0:
@@ -32,11 +41,20 @@ def get_client_prediction(id):
 
 @app.route('/get_clients_df')
 def get_clients_df():
+    """
+
+    :return: the whole sample data
+    """
     return jsonify(data.to_json())
 
 
 @app.route('/get_lime/<id>')
 def get_lime(id):
+    """
+
+    :param id: the client id
+    :return: lime explanation data for this client
+    """
     X = lime_df[lime_df['SK_ID_CURR'] == int(id)]
     if X.shape[0] == 0:
         return {}
@@ -45,6 +63,11 @@ def get_lime(id):
 
 @app.route('/get_knn/<id>')
 def get_knn(id):
+    """
+
+    :param id: the client id
+    :return: nearest neighbors average on different features
+    """
     X = knn_df[knn_df['SK_ID_CURR'] == int(id)]
     if X.shape[0] == 0:
         return {}
@@ -53,6 +76,10 @@ def get_knn(id):
 
 @app.route('/get_stats')
 def get_stats():
+    """
+
+    :return: stats data containing mean per feature for different features (per good / bad clients and all clients)
+    """
     return jsonify(stats_df.to_json())
 
 

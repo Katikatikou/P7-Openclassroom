@@ -1,12 +1,12 @@
-import streamlit as st
-from urllib.request import urlopen
-import pandas as pd
-import seaborn as sns
-import pickle
 import json
-import shap
+import pickle
+from urllib.request import urlopen
+
 import altair as alt
 import lightgbm as lgb
+import pandas as pd
+import shap
+import streamlit as st
 from matplotlib import pyplot as plt
 
 END_POINT = 'http://127.0.0.1:5000/'
@@ -14,6 +14,10 @@ END_POINT = 'http://127.0.0.1:5000/'
 
 @st.cache
 def load_main_data():
+    """
+
+    :return: the sample data frame from backend
+    """
     json_url = urlopen(END_POINT + 'get_clients_df')
     data = json.loads(json_url.read())
     return pd.read_json(data)
@@ -21,12 +25,20 @@ def load_main_data():
 
 @st.cache
 def load_all_clients():
+    """
+
+    :return: all clients ids from backend
+    """
     json_url = urlopen(END_POINT + 'get_all_clients')
     return json.loads(json_url.read())
 
 
 @st.cache
 def load_stats():
+    """
+
+    :return: stats data from backend
+    """
     json_url = urlopen(END_POINT + 'get_stats')
     data = json.loads(json_url.read())
     return pd.read_json(data)
@@ -34,11 +46,19 @@ def load_stats():
 
 @st.cache
 def load_model():
+    """
+
+    :return: loading the model
+    """
     return pickle.load(open('../output/best_estimator.pkl', 'rb'))
 
 
 @st.cache
 def load_shap_explainer():
+    """
+
+    :return: a built shap explainer
+    """
     data = load_main_data()
     data = data.drop(columns=['PREDICT', 'PREDICT_PROBA', 'SK_ID_CURR'])
     explainer = shap.TreeExplainer(load_model())
@@ -47,21 +67,43 @@ def load_shap_explainer():
 
 
 def get_lime_data(id):
+    """
+
+    :param id: the client id
+    :return: the lime explanation for top features
+    """
     json_url = urlopen(END_POINT + 'get_lime/' + str(id))
     return pd.read_json(json.loads(json_url.read()))
 
 
 def get_client_prediction(id):
+    """
+
+    :param id: client id
+    :return: prediction / prediction proba for the client
+    """
     json_url = urlopen(END_POINT + 'get_client_prediction/' + str(id))
     return json.loads(json_url.read())
 
 
 def get_knn_data(id):
+    """
+
+    :param id: the client id
+    :return: the nearest neighbors avergage on different features
+    """
     json_url = urlopen(END_POINT + 'get_knn/' + str(id))
     return pd.read_json(json.loads(json_url.read()))
 
 
 def build_stats_data_frame(id, features, data):
+    """
+
+    :param id: the client ids
+    :param features: the columns on which display stats (lime data)
+    :param data: the whole dataframe
+    :return: a stats dataframe built to display a chart
+    """
     df = pd.DataFrame(columns=['Feature', 'Type', 'Mean'])
     knn_df = get_knn_data(id)
     stats_df = load_stats()
@@ -84,10 +126,11 @@ def build_stats_data_frame(id, features, data):
 
 
 def main():
+    # add a title
     st.title('Prêt à dépenser : Implémenter un modèle de scoring')
     st.subheader('By Salaheddine E.G : Openclassroom student')
 
-    # Aperçu des données
+    # data preview
     data = load_main_data()
     st.subheader('Apercu des données')
     st.write('Aperçu des données pour les gens éligibles à un crédit : ')
@@ -95,15 +138,16 @@ def main():
     st.write('...Et pour ceux pas éligibles : ')
     st.write(data.tail(5))
 
-    # Chargement de toutes les données via l'api pour permettre à l'utilisateur de choisir un client
+    # get data from api to choose a client
     all_clients = load_all_clients()
     st.subheader('Affichage des données pour un client')
 
     id = st.selectbox('Choisissez un client : ', all_clients)
-    # Récupération de la prédiction via l'api
+    # display the prediction proba
     predict = get_client_prediction(id)
     st.info('Probabilité de défaut du client %.2f %%' % (predict['prediction_proba'] * 100))
 
+    # Display lime explainer using altair chart
     st.subheader('Explication lime du résultat pour le client')
     lime_data = get_lime_data(id)
     lime_data.dropna(how='all', axis=1, inplace=True)
@@ -121,6 +165,7 @@ def main():
         )
     ).properties(width=600, height=400))
 
+    # display clients data vs similar clients, clients with the same target value, and vs all clients
     st.subheader('Comparaison du résultat de clients par rapport à d\'autres clients')
     stats = build_stats_data_frame(id, lime_data.columns, data)
 
@@ -141,6 +186,7 @@ def main():
         column='Feature:N'
     ).properties(width=200, height=400))
 
+    # display lgb model importance
     st.subheader('Explication du modèle ')
     model = load_model()
     lgb.plot_importance(model, max_num_features=10)
@@ -148,6 +194,7 @@ def main():
     st.pyplot(bbox_inches='tight')
     plt.clf()
 
+    # display shap explanation
     st.subheader('Explication du modèle en utilisant SHAP')
     explainer, shap_values = load_shap_explainer()
     plt.title('Importance des features en utilisant shap')
@@ -155,19 +202,6 @@ def main():
     shap.summary_plot(shap_values, shap_data, plot_type="bar", show=False)
     st.pyplot(bbox_inches='tight')
     plt.clf()
-
-    # st.bar_chart(lime_data.T, height=600)
-
-    # fig, ax = plt.subplots(figsize=(10, 5), squeeze=True)
-    # sns.barplot(lime_data.iloc[0], lime_data.columns, orient='h', ax=ax, palette="vlag")
-    # plt.xticks(rotation=45)
-    # plt.yticks(rotation=45)
-    # fig.tight_layout(
-    #     margin=dict(l=20, r=20, t=20, b=20),
-    #     paper_bgcolor="LightSteelBlue",
-    # )
-    #
-    # st.pyplot()
 
 
 if __name__ == '__main__':
