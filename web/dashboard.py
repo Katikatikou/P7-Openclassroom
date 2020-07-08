@@ -85,6 +85,7 @@ def build_stats_data_frame(id, features, data):
 
 def main():
     st.title('Prêt à dépenser : Implémenter un modèle de scoring')
+    st.subheader('By Salaheddine E.G : Openclassroom student')
 
     # Aperçu des données
     data = load_main_data()
